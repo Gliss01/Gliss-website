@@ -47,7 +47,7 @@
 
   
 </head>
-<body class="gliss-gliss">
+<body class="gliss-black">
 
 <style>
 </style>
@@ -59,26 +59,22 @@
   –––––––––––––––––––––––––––––––––––––––––––––––––– -->
 
 
-
+<center>
  <div class="wrapper">
   <div class="genos">
-<ol class="gliss-gliss wix">
+<ol class="gliss-black wix">
  <li>
-<i class="fab fa-github"></i>
+<i class="fas fa-server"></i>
 <br>
-<h6>Free</h6>
-<a>Open source on Github</a>
+<h6>Gliss App/h6>
+<a href="https://github.com/Gliss01/Gliss-app">Let your first Gliss app be awesome</a>
 </li>
 <li>
-<i class="fas fa-paint-roller"></i>
+
+<i class="fas fa-project-diagram"></i>
 <br>
-<h6>Design</h6>
-<a>Application design</a></li>
-<li>
-<i class="fas fa-box"></i>
-<br>
-<h6>Modulize</h6>
-<a>Costumize IOT apps</a>
+<h6>Gliss Engine</h6>
+<a href="https://github.com/Gliss01/Gliss-engine">Make a new step</a>
 </li>
 <li>
 
@@ -95,17 +91,17 @@
 </ol>
 </div>
 </div>
-
+</center>
 
   
-<canvas width="1960" height="1600"></canvas>
+
 
     <!-- Foot Page Layout
   –––––––––––––––––––––––––––––––––––––––––––––––––– -->
 
 
    <footer class="page-footer">
- <div class="page-footer__inner gliss-white">
+ <div class="page-footer__inner gliss-black">
     <p>   
 Gliss@2018
 </p>  	
@@ -121,85 +117,7 @@ Gliss@2018
       ga('send', 'pageview');
     </script>
 
-<script src="https://d3js.org/d3.v4.min.js"></script>
-<script>
 
-var canvas = document.querySelector("canvas"),
-    context = canvas.getContext("2d"),
-    width = canvas.width,
-    height = canvas.height;
-
-var simulation = d3.forceSimulation()
-    .force("link", d3.forceLink().id(function(d) { return d.id; }))
-    .force("charge", d3.forceManyBody())
-    .force("center", d3.forceCenter(width / 2, height / 2));
-
-d3.json("miserables.json", function(error, graph) {
-  if (error) throw error;
-
-  simulation
-      .nodes(graph.nodes)
-      .on("tick", ticked);
-
-  simulation.force("link")
-      .links(graph.links);
-
-  d3.select(canvas)
-      .call(d3.drag()
-          .container(canvas)
-          .subject(dragsubject)
-          .on("start", dragstarted)
-          .on("drag", dragged)
-          .on("end", dragended));
-
-  function ticked() {
-    context.clearRect(0, 0, width, height);
-
-    context.beginPath();
-    graph.links.forEach(drawLink);
-    context.strokeStyle = "#aaa";
-    context.stroke();
-
-    context.beginPath();
-    graph.nodes.forEach(drawNode);
-    context.fill();
-    context.strokeStyle = "#fff";
-    context.stroke();
-  }
-
-  function dragsubject() {
-    return simulation.find(d3.event.x, d3.event.y);
-  }
-});
-
-function dragstarted() {
-  if (!d3.event.active) simulation.alphaTarget(0.3).restart();
-  d3.event.subject.fx = d3.event.subject.x;
-  d3.event.subject.fy = d3.event.subject.y;
-}
-
-function dragged() {
-  d3.event.subject.fx = d3.event.x;
-  d3.event.subject.fy = d3.event.y;
-}
-
-function dragended() {
-  if (!d3.event.active) simulation.alphaTarget(0);
-  d3.event.subject.fx = null;
-  d3.event.subject.fy = null;
-}
-
-function drawLink(d) {
-  context.moveTo(d.source.x, d.source.y);
-  context.lineTo(d.target.x, d.target.y);
-}
-
-function drawNode(d) {
-  context.moveTo(d.x + 3, d.y);
-  context.arc(d.x, d.y, 3, 0, 2 * Math.PI);
-}
-
-</script>
 
 <!-- End Document
   –––––––––––––––––––––––––––––––––––––––––––––––––– -->
