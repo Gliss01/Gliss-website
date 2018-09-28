@@ -97,7 +97,8 @@
 </div>
 
 
-<div id="canvas-svg"></div>
+  
+<canvas width="960" height="600"></canvas>
 
     <!-- Foot Page Layout
   –––––––––––––––––––––––––––––––––––––––––––––––––– -->
@@ -119,178 +120,84 @@ Gliss@2018
       ga('create', 'UA-38732775-4', 'auto');
       ga('send', 'pageview');
     </script>
-  
+
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script>
 
-var WIDTH = config.width, HEIGHT = config.height;
+var canvas = document.querySelector("canvas"),
+    context = canvas.getContext("2d"),
+    width = canvas.width,
+    height = canvas.height;
 
-var COLOR = config.nodeColor;
-var LINK_COLOR = config.linkColor;
+var simulation = d3.forceSimulation()
+    .force("link", d3.forceLink().id(function(d) { return d.id; }))
+    .force("charge", d3.forceManyBody())
+    .force("center", d3.forceCenter(width / 2, height / 2));
 
-var scene = new THREE.Scene();
+d3.json("miserables.json", function(error, graph) {
+  if (error) throw error;
 
-// set some camera attributes
-var VIEW_ANGLE = 45,
-  ASPECT = WIDTH / HEIGHT,
-  NEAR = 0.1,
-  FAR = 10000;
+  simulation
+      .nodes(graph.nodes)
+      .on("tick", ticked);
 
-// get the DOM element to attach to
-// - assume we've got jQuery to hand
-var $container = $('#canvas-svg');
+  simulation.force("link")
+      .links(graph.links);
 
-// create a WebGL renderer, camera
-// and a scene
-var renderer = new THREE.WebGLRenderer({alpha: true,
-              antialiasing: true});
+  d3.select(canvas)
+      .call(d3.drag()
+          .container(canvas)
+          .subject(dragsubject)
+          .on("start", dragstarted)
+          .on("drag", dragged)
+          .on("end", dragended));
 
-renderer.setClearColor( 0x000000, 0 );
+  function ticked() {
+    context.clearRect(0, 0, width, height);
 
-var camera =
-  new THREE.PerspectiveCamera(
-    VIEW_ANGLE,
-    ASPECT,
-    NEAR,
-    FAR);
+    context.beginPath();
+    graph.links.forEach(drawLink);
+    context.strokeStyle = "#aaa";
+    context.stroke();
 
-var scene = new THREE.Scene();
-
-// add the camera to the scene
-scene.add(camera);
-
-// the camera starts at 0,0,0
-// so pull it back
-camera.position.z = 300;
-
-// start the renderer
-renderer.setSize(WIDTH, HEIGHT);
-
-// attach the render-supplied DOM element
-$container.append(renderer.domElement);
-
-var spheres = [], three_links = [];
-
-// Define the 3d force
-var force = d3.layout.force3d()
-    .nodes(sort_data=[])
-    .links(links=[])
-    .size([50, 50])
-    .gravity(0.3)
-    .charge(config.charge)
-
-var DISTANCE = 1
-
-for (var i = 0; i < data.nodes.length; i++) {
-  sort_data.push({x:data.nodes.x + DISTANCE,y:data.nodes.y + DISTANCE,z:0})
-  
-  // set up the sphere vars
-  var radius = 5,
-      segments = 16,
-      rings = 16;
-  
-  // create the sphere's material
-  var sphereMaterial = new THREE.MeshLambertMaterial(
-      {
-        color: COLOR
-      });
-  
-  var sphere = new THREE.Mesh(
-    new THREE.SphereGeometry(
-      radius,
-      segments,
-      rings),
-    sphereMaterial);
-  
-  spheres.push(sphere);
-  
-  // add the sphere to the scene
-  scene.add(sphere);
-}
-
-for (var i = 0; i < data.links.length; i++) {
-  links.push({target:sort_data[data.links[i].target],source:sort_data[data.links[i].source]});
-  
-  var material = new THREE.LineBasicMaterial({ color: LINK_COLOR,
-                linewidth: 2}); 
-  var geometry = new THREE.Geometry();
-  
-  geometry.vertices.push( new THREE.Vector3( 0, 0, 0 ) );
-  geometry.vertices.push( new THREE.Vector3( 0, 0, 0 ) );
-  var line = new THREE.Line( geometry, material );
-  line.userData = { source: data.links[i].source,
-                    target: data.links[i].target };
-  three_links.push(line);
-  scene.add(line);
-  
-  force.start();
-}
-
-// set up the axes
-var x = d3.scale.linear().domain([0, 350]).range([0, 10]),
-    y = d3.scale.linear().domain([0, 350]).range([0, 10]),
-    z = d3.scale.linear().domain([0, 350]).range([0, 10]);
-
-force.on("tick", function(e) {
-  for (var i = 0; i < sort_data.length; i++) {
-    spheres[i].position.set(x(sort_data[i].x) * 40 - 40, y(sort_data[i].y) * 40 - 40,0);
-    
-    for (var j = 0; j < three_links.length; j++) {
-      var line = three_links[j];
-      var vi = -1;
-      if (line.userData.source === i) {
-        vi = 0;
-      }
-      if (line.userData.target === i) {
-        vi = 1;
-      }
-      
-      if (vi >= 0) {
-        line.geometry.vertices[vi].x = x(sort_data[i].x) * 40 - 40;
-        line.geometry.vertices[vi].y = y(sort_data[i].y) * 40 - 40;
-        line.geometry.verticesNeedUpdate = true;
-      }
-    }
+    context.beginPath();
+    graph.nodes.forEach(drawNode);
+    context.fill();
+    context.strokeStyle = "#fff";
+    context.stroke();
   }
-  
-  renderer.render(scene, camera);
+
+  function dragsubject() {
+    return simulation.find(d3.event.x, d3.event.y);
+  }
 });
 
-// create a point light
-var pointLight = new THREE.PointLight( 0xFFFFFF );
-
-// set its position
-pointLight.position.x = 10;
-pointLight.position.y = 50;
-pointLight.position.z = 130;
-
-// add to the scene
-scene.add(pointLight);
-
-var rotSpeed = 0.01;
-function checkRotation(){
-
-    var x = camera.position.x,
-        y = camera.position.y,
-        z = camera.position.z;
-
-    camera.position.x = x * Math.cos(rotSpeed) - z * Math.sin(rotSpeed);
-    camera.position.z = z * Math.cos(rotSpeed) + x * Math.sin(rotSpeed);
-    
-    camera.lookAt(scene.position);
-    
+function dragstarted() {
+  if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+  d3.event.subject.fx = d3.event.subject.x;
+  d3.event.subject.fy = d3.event.subject.y;
 }
 
-function animate() {
-    requestAnimationFrame(animate);
-    
-    checkRotation();
-    
-    renderer.render(scene, camera);
+function dragged() {
+  d3.event.subject.fx = d3.event.x;
+  d3.event.subject.fy = d3.event.y;
 }
 
-animate();
+function dragended() {
+  if (!d3.event.active) simulation.alphaTarget(0);
+  d3.event.subject.fx = null;
+  d3.event.subject.fy = null;
+}
 
+function drawLink(d) {
+  context.moveTo(d.source.x, d.source.y);
+  context.lineTo(d.target.x, d.target.y);
+}
+
+function drawNode(d) {
+  context.moveTo(d.x + 3, d.y);
+  context.arc(d.x, d.y, 3, 0, 2 * Math.PI);
+}
 
 </script>
 
