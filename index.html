@@ -50,47 +50,7 @@
 <body class="gliss-black">
 
 <style>
-
-body {
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  width: 960px;
-  height: 500px;
-  position: relative;
-}
-
-form {
-  position: absolute;
-  top: 1em;
-  left: 1em;
-}
-
-path {
-  fill-rule: evenodd;
-  stroke: #333;
-  stroke-width: 2px;
-}
-
-.sun path {
-  fill: #6baed6;
-}
-
-.planet path {
-  fill: #9ecae1;
-}
-
-.annulus path {
-  fill: #c6dbef;
-}
-
 </style>
-<form>
-  <input type="radio" name="reference" id="ref-annulus">
-  <label for="ref-annulus">Annulus</label><br>
-  <input type="radio" name="reference" id="ref-planet" checked>
-  <label for="ref-planet">Planets</label><br>
-  <input type="radio" name="reference" id="ref-sun">
-  <label for="ref-sun">Sun</label>
-</form>
 
 
 
@@ -137,7 +97,7 @@ path {
 </div>
 
 
-
+<div id="canvas-svg"></div>
 
     <!-- Foot Page Layout
   –––––––––––––––––––––––––––––––––––––––––––––––––– -->
@@ -163,97 +123,174 @@ Gliss@2018
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script>
 
-var width = 960,
-    height = 500,
-    radius = 80,
-    x = Math.sin(2 * Math.PI / 3),
-    y = Math.cos(2 * Math.PI / 3);
+var WIDTH = config.width, HEIGHT = config.height;
 
-var offset = 0,
-    speed = 4,
-    start = Date.now();
+var COLOR = config.nodeColor;
+var LINK_COLOR = config.linkColor;
 
-var svg = d3.select("body").append("svg")
-    .attr("width", width)
-    .attr("height", height)
-  .append("g")
-    .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")scale(.55)")
-  .append("g");
+var scene = new THREE.Scene();
 
-var frame = svg.append("g")
-    .datum({radius: Infinity});
+// set some camera attributes
+var VIEW_ANGLE = 45,
+  ASPECT = WIDTH / HEIGHT,
+  NEAR = 0.1,
+  FAR = 10000;
 
-frame.append("g")
-    .attr("class", "annulus")
-    .datum({teeth: 80, radius: -radius * 5, annulus: true})
-  .append("path")
-    .attr("d", gear);
+// get the DOM element to attach to
+// - assume we've got jQuery to hand
+var $container = $('#canvas-svg');
 
-frame.append("g")
-    .attr("class", "sun")
-    .datum({teeth: 16, radius: radius})
-  .append("path")
-    .attr("d", gear);
+// create a WebGL renderer, camera
+// and a scene
+var renderer = new THREE.WebGLRenderer({alpha: true,
+              antialiasing: true});
 
-frame.append("g")
-    .attr("class", "planet")
-    .attr("transform", "translate(0,-" + radius * 3 + ")")
-    .datum({teeth: 32, radius: -radius * 2})
-  .append("path")
-    .attr("d", gear);
+renderer.setClearColor( 0x000000, 0 );
 
-frame.append("g")
-    .attr("class", "planet")
-    .attr("transform", "translate(" + -radius * 3 * x + "," + -radius * 3 * y + ")")
-    .datum({teeth: 32, radius: -radius * 2})
-  .append("path")
-    .attr("d", gear);
+var camera =
+  new THREE.PerspectiveCamera(
+    VIEW_ANGLE,
+    ASPECT,
+    NEAR,
+    FAR);
 
-frame.append("g")
-    .attr("class", "planet")
-    .attr("transform", "translate(" + radius * 3 * x + "," + -radius * 3 * y + ")")
-    .datum({teeth: 32, radius: -radius * 2})
-  .append("path")
-    .attr("d", gear);
+var scene = new THREE.Scene();
 
-d3.selectAll("input[name=reference]")
-  .data([radius * 5, Infinity, -radius])
-    .on("change", function(radius1) {
-      var radius0 = frame.datum().radius, angle = (Date.now() - start) * speed;
-      frame.datum({radius: radius1});
-      svg.attr("transform", "rotate(" + (offset += angle / radius0 - angle / radius1) + ")");
-    });
+// add the camera to the scene
+scene.add(camera);
 
-d3.selectAll("input[name=speed]")
-    .on("change", function() { speed = +this.value; });
+// the camera starts at 0,0,0
+// so pull it back
+camera.position.z = 300;
 
-function gear(d) {
-  var n = d.teeth,
-      r2 = Math.abs(d.radius),
-      r0 = r2 - 8,
-      r1 = r2 + 8,
-      r3 = d.annulus ? (r3 = r0, r0 = r1, r1 = r3, r2 + 20) : 20,
-      da = Math.PI / n,
-      a0 = -Math.PI / 2 + (d.annulus ? Math.PI / n : 0),
-      i = -1,
-      path = ["M", r0 * Math.cos(a0), ",", r0 * Math.sin(a0)];
-  while (++i < n) path.push(
-      "A", r0, ",", r0, " 0 0,1 ", r0 * Math.cos(a0 += da), ",", r0 * Math.sin(a0),
-      "L", r2 * Math.cos(a0), ",", r2 * Math.sin(a0),
-      "L", r1 * Math.cos(a0 += da / 3), ",", r1 * Math.sin(a0),
-      "A", r1, ",", r1, " 0 0,1 ", r1 * Math.cos(a0 += da / 3), ",", r1 * Math.sin(a0),
-      "L", r2 * Math.cos(a0 += da / 3), ",", r2 * Math.sin(a0),
-      "L", r0 * Math.cos(a0), ",", r0 * Math.sin(a0));
-  path.push("M0,", -r3, "A", r3, ",", r3, " 0 0,0 0,", r3, "A", r3, ",", r3, " 0 0,0 0,", -r3, "Z");
-  return path.join("");
+// start the renderer
+renderer.setSize(WIDTH, HEIGHT);
+
+// attach the render-supplied DOM element
+$container.append(renderer.domElement);
+
+var spheres = [], three_links = [];
+
+// Define the 3d force
+var force = d3.layout.force3d()
+    .nodes(sort_data=[])
+    .links(links=[])
+    .size([50, 50])
+    .gravity(0.3)
+    .charge(config.charge)
+
+var DISTANCE = 1
+
+for (var i = 0; i < data.nodes.length; i++) {
+  sort_data.push({x:data.nodes.x + DISTANCE,y:data.nodes.y + DISTANCE,z:0})
+  
+  // set up the sphere vars
+  var radius = 5,
+      segments = 16,
+      rings = 16;
+  
+  // create the sphere's material
+  var sphereMaterial = new THREE.MeshLambertMaterial(
+      {
+        color: COLOR
+      });
+  
+  var sphere = new THREE.Mesh(
+    new THREE.SphereGeometry(
+      radius,
+      segments,
+      rings),
+    sphereMaterial);
+  
+  spheres.push(sphere);
+  
+  // add the sphere to the scene
+  scene.add(sphere);
 }
 
-d3.timer(function() {
-  var angle = (Date.now() - start) * speed,
-      transform = function(d) { return "rotate(" + angle / d.radius + ")"; };
-  frame.selectAll("path").attr("transform", transform);
-  frame.attr("transform", transform); // frame of reference
+for (var i = 0; i < data.links.length; i++) {
+  links.push({target:sort_data[data.links[i].target],source:sort_data[data.links[i].source]});
+  
+  var material = new THREE.LineBasicMaterial({ color: LINK_COLOR,
+                linewidth: 2}); 
+  var geometry = new THREE.Geometry();
+  
+  geometry.vertices.push( new THREE.Vector3( 0, 0, 0 ) );
+  geometry.vertices.push( new THREE.Vector3( 0, 0, 0 ) );
+  var line = new THREE.Line( geometry, material );
+  line.userData = { source: data.links[i].source,
+                    target: data.links[i].target };
+  three_links.push(line);
+  scene.add(line);
+  
+  force.start();
+}
+
+// set up the axes
+var x = d3.scale.linear().domain([0, 350]).range([0, 10]),
+    y = d3.scale.linear().domain([0, 350]).range([0, 10]),
+    z = d3.scale.linear().domain([0, 350]).range([0, 10]);
+
+force.on("tick", function(e) {
+  for (var i = 0; i < sort_data.length; i++) {
+    spheres[i].position.set(x(sort_data[i].x) * 40 - 40, y(sort_data[i].y) * 40 - 40,0);
+    
+    for (var j = 0; j < three_links.length; j++) {
+      var line = three_links[j];
+      var vi = -1;
+      if (line.userData.source === i) {
+        vi = 0;
+      }
+      if (line.userData.target === i) {
+        vi = 1;
+      }
+      
+      if (vi >= 0) {
+        line.geometry.vertices[vi].x = x(sort_data[i].x) * 40 - 40;
+        line.geometry.vertices[vi].y = y(sort_data[i].y) * 40 - 40;
+        line.geometry.verticesNeedUpdate = true;
+      }
+    }
+  }
+  
+  renderer.render(scene, camera);
 });
+
+// create a point light
+var pointLight = new THREE.PointLight( 0xFFFFFF );
+
+// set its position
+pointLight.position.x = 10;
+pointLight.position.y = 50;
+pointLight.position.z = 130;
+
+// add to the scene
+scene.add(pointLight);
+
+var rotSpeed = 0.01;
+function checkRotation(){
+
+    var x = camera.position.x,
+        y = camera.position.y,
+        z = camera.position.z;
+
+    camera.position.x = x * Math.cos(rotSpeed) - z * Math.sin(rotSpeed);
+    camera.position.z = z * Math.cos(rotSpeed) + x * Math.sin(rotSpeed);
+    
+    camera.lookAt(scene.position);
+    
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    
+    checkRotation();
+    
+    renderer.render(scene, camera);
+}
+
+animate();
+
 
 </script>
 
