@@ -1,0 +1,31 @@
+os: windows
+dist: trusty
+
+language: python
+python:
+  - "2.7"
+
+# Install Java 8 as required by vnu.jar
+before_install:
+  - update
+  - install openjdk-8-jre
+
+install:
+  - pip install -r dev-requirements.txt
+
+script:
+  - html5validator
+
+deploy:
+  provider: s3
+  access_key_id: 
+  secret_access_key:
+  bucket: servo-builds
+  acl: public_read
+  region: us-west-2
+  on:
+    branch: master
+  condition: $TRAVIS_PULL_REQUEST = "false"
+
+notifications:
+  webhooks: 
